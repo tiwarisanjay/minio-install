@@ -1,17 +1,39 @@
 # minio-install
 - Intall Minio
   ``` 
-  kustomize build github.com/minio/operator/?ref=v4.3.9 | kubectl apply --filename - 
+   helm template argo-artifacts minio/minio --set service.type=LoadBalancer --set fullnameOverride=argo-artifacts -n minio  > minio.yaml
+   kubectl creaete ns minio 
+   kubectl apply -f minio.yaml -n minio
+   ACCESS_KEY=$(kubectl get secret argo-artifacts --namespace minio -o jsonpath="{.data.accesskey}" | base64 --decode)
+   SECRET_KEY=$(kubectl get secret argo-artifacts --namespace minio -o jsonpath="{.data.secretkey}" | base64 --decode)
+ 
   ```
-  Check newer version of minio before installing. 
-- Port forward for UI 
+- Login by Port forwarding
   ```
-  kubectl port-forward -n minio-operator service/console 9090:9090
+    kubectl port-forward -n minio service/argo-artifacts 9090:9000
+    http://localhost:9090/ 
   ```
-- To Login at minio using URL[http://localhost:9090/]
-- Get JWT with following command 
+- Create bucket as my-bucket 
+- Udpate workflow-controller-configmap with minio bucket information as following data 
+  ```yaml
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: workflow-controller-configmap
+  data:
+    config: |
+      containerRuntimeExecutor: k8sapi
+      artifactRepository:
+        s3:
+          bucket: my-bucket
+          keyPrefix: prefix/in/bucket     #optional
+          endpoint: my-minio-endpoint.default:9000        #AWS => s3.amazonaws.com; GCS => storage.googleapis.com
+          insecure: true                  #omit for S3/GCS. Needed when minio runs without TLS
+          accessKeySecret:                #omit if accessing via AWS IAM
+            name: my-minio-cred
+            key: accesskey
+          secretKeySecret:                #omit if accessing via AWS IAM
+            name: my-minio-cred
+            key: secretkey
   ```
-  kubectl -n minio-operator get secret $(kubectl -n minio-operator get serviceaccount console-sa -o jsonpath="{.secrets[0].name}") -o jsonpath="{.data.token}" | base64 --decode
-  ````
-  Make sure you have base64 lib installed on the machine to decode the token. 
-  
+ 
