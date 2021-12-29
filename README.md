@@ -37,3 +37,7 @@
             key: secretkey
   ```
  
+- Create Secret with access key and secret key 
+  ```
+  kubectl create secret generic my-minio-cred --from-literal=accessKey=${ACCESS_KEY} --from-literal=secretKey=${SECRET_KEY} -n argo-workflow
+  ```
